@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gorilla/websocket"
-	e "github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/ebitenutil"
+	e "github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/patrick-me/game_one/game"
 
 	"sort"
@@ -17,8 +17,8 @@ var imgPool map[string]*e.Image
 var c *websocket.Conn
 
 const (
-	screenWidth  = 640
-	screenHeight = 480
+	screenWidth  = 320
+	screenHeight = 320
 )
 
 func init() {
@@ -27,7 +27,7 @@ func init() {
 		Units:    game.Units{},
 	}
 
-	backgroundImg, _, _ = ebitenutil.NewImageFromFile("resources/frames/bg.png", e.FilterDefault)
+	backgroundImg, _, _ = ebitenutil.NewImageFromFile("resources/frames/bg.png")
 	imgPool = make(map[string]*e.Image)
 	c = connectToServer()
 }
@@ -35,12 +35,10 @@ func init() {
 type Game struct{}
 
 func main() {
-
 	e.SetRunnableOnUnfocused(true)
-	e.SetWindowSize(screenWidth, screenHeight)
+	e.SetWindowSize(2*screenWidth, 2*screenHeight)
 	e.SetWindowTitle("Game one")
 	e.RunGame(&Game{})
-	//e.Run()
 }
 
 func connectToServer() *websocket.Conn {
@@ -57,15 +55,15 @@ func connectToServer() *websocket.Conn {
 	return c
 }
 
-func (g *Game) Draw(screen *e.Image) {
-	g.Update(screen)
+func (g *Game) Update() error {
+	return nil
 }
 
-func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+func (g *Game) Layout(outsideWidth, outsideHeight int) (_, _ int) {
 	return screenWidth, screenHeight
 }
 
-func (g *Game) Update(screen *e.Image) error {
+func (g *Game) Draw(screen *e.Image) {
 	frame++
 
 	screen.DrawImage(backgroundImg, nil)
@@ -96,7 +94,7 @@ func (g *Game) Update(screen *e.Image) error {
 		var ok bool
 
 		if img, ok = imgPool[path]; !ok {
-			img, _, _ = ebitenutil.NewImageFromFile(path, e.FilterDefault)
+			img, _, _ = ebitenutil.NewImageFromFile(path)
 			imgPool[path] = img
 		}
 
@@ -151,6 +149,4 @@ func (g *Game) Update(screen *e.Image) error {
 			},
 		})
 	}
-
-	return nil
 }
