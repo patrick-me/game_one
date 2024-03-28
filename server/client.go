@@ -83,7 +83,7 @@ func (c *Client) readPump(world *game.World, unitID string) {
 				zap.String("message", string(message)),
 				zap.Error(err))
 		}
-		world.HandleEvent(&e, logger)
+		world.HandleEvent(&e)
 	}
 }
 
