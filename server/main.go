@@ -6,6 +6,7 @@ import (
 	"github.com/patrick-me/game_one/game"
 	"go.uber.org/zap"
 	"os"
+	"time"
 )
 
 var logger *zap.Logger
@@ -31,12 +32,35 @@ func main() {
 	go hub.run()
 
 	ws := gin.New()
-	ws.GET("/ws", func(hub *Hub, world *game.World) gin.HandlerFunc {
-		return func(c *gin.Context) {
-			ServeWs(hub, world, c.Writer, c.Request)
-		}
-	}(hub, world))
+	ws.GET("/ws", wsHandler(hub, world))
+
+	ticker := time.NewTicker(time.Minute * 1)
+	done := make(chan bool)
+
+	go clearWorld(done, ticker, world)
 
 	logger.Info("Listening on port: ", zap.String("port", os.Getenv("SERVER_PORT")))
 	ws.Run(":" + os.Getenv("SERVER_PORT"))
+
+	ticker.Stop()
+	done <- true
+}
+
+func clearWorld(done chan bool, ticker *time.Ticker, world *game.World) {
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			logger.Info("units in the world", zap.Int("units", len(world.Units)))
+		}
+	}
+}
+
+func wsHandler(hub *Hub, world *game.World) gin.HandlerFunc {
+	return func(hub *Hub, world *game.World) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			ServeWs(hub, world, c.Writer, c.Request)
+		}
+	}(hub, world)
 }
