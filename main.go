@@ -5,7 +5,7 @@ import (
 	e "github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/patrick-me/game_one/game"
-
+	"go.uber.org/zap"
 	"sort"
 	"strconv"
 )
@@ -21,6 +21,8 @@ const (
 	screenHeight = 320
 )
 
+var logger *zap.Logger
+
 func init() {
 	world = &game.World{
 		IsServer: false,
@@ -30,6 +32,9 @@ func init() {
 	backgroundImg, _, _ = ebitenutil.NewImageFromFile("resources/frames/bg.png")
 	imgPool = make(map[string]*e.Image)
 	c = connectToServer()
+
+	logger, _ = zap.NewProduction()
+	defer logger.Sync()
 }
 
 type Game struct{}
@@ -38,6 +43,7 @@ func main() {
 	e.SetRunnableOnUnfocused(true)
 	e.SetWindowSize(2*screenWidth, 2*screenHeight)
 	e.SetWindowTitle("Game one")
+	logger.Info("Running game")
 	e.RunGame(&Game{})
 }
 
@@ -141,7 +147,8 @@ func (g *Game) Draw(screen *e.Image) {
 		})
 	}
 
-	if world.Units[world.MyID].Action == game.ActionRun {
+	unit, ok := world.Units[world.MyID]
+	if ok && unit.Action == game.ActionRun {
 		c.WriteJSON(game.Event{
 			Type: game.EventTypeIdle,
 			Data: game.EventMove{

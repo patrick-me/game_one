@@ -8,13 +8,14 @@ import (
 )
 
 type Unit struct {
-	ID                  string  `json:"id"`
-	X                   float64 `json:"x"`
-	Y                   float64 `json:"y"`
-	SpriteName          string  `json:"sprite_name"`
-	Action              string  `json:"action"`
-	Frame               int     `json:"frame"`
-	HorizontalDirection int     `json:"horizontal_direction"`
+	ID                  string    `json:"id"`
+	X                   float64   `json:"x"`
+	Y                   float64   `json:"y"`
+	SpriteName          string    `json:"sprite_name"`
+	Action              string    `json:"action"`
+	LastActionTime      time.Time `json:"last_action"`
+	Frame               int       `json:"frame"`
+	HorizontalDirection int       `json:"horizontal_direction"`
 }
 
 type Units map[string]*Unit
@@ -33,23 +34,31 @@ type Event struct {
 type EventConnect struct {
 	Unit
 }
+
 type EventMove struct {
 	UnitID    string `json:"unit_id"`
 	Direction int    `json:"direction"`
 }
+
+type EventUnitDisconnected struct {
+	UnitID string `json:"unit_id"`
+}
+
 type EventIdle struct {
 	UnitID string `json:"unit_id"`
 }
+
 type EventInit struct {
 	PlayerID string `json:"player_id"`
 	Units    Units  `json:"units"`
 }
 
 const (
-	EventTypeConnect = "connect"
-	EventTypeMove    = "move"
-	EventTypeIdle    = "idle"
-	EventTypeInit    = "init"
+	EventTypeConnect          = "connect"
+	EventTypeMove             = "move"
+	EventTypeIdle             = "idle"
+	EventTypeInit             = "init"
+	EventTypeUnitDisconnected = "disconnect"
 )
 
 const ActionRun = "run"
@@ -86,6 +95,7 @@ func (w *World) HandleEvent(e *Event) {
 
 		unit := w.Units[event.UnitID]
 		unit.Action = ActionRun
+		unit.LastActionTime = time.Now()
 
 		switch event.Direction {
 		case DirectionUp:
@@ -108,7 +118,14 @@ func (w *World) HandleEvent(e *Event) {
 
 		unit := w.Units[event.UnitID]
 		unit.Action = ActionIdle
+
+	case EventTypeUnitDisconnected:
+		str, _ := json.Marshal(e.Data)
+		var event EventUnitDisconnected
+		json.Unmarshal(str, &event)
+		delete(w.Units, event.UnitID)
 	}
+
 }
 
 func (w *World) AddPlayer() *Unit {
@@ -119,12 +136,13 @@ func (w *World) AddPlayer() *Unit {
 	id := uuid.New().String()
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	unit := &Unit{
-		ID:         id,
-		Action:     ActionIdle,
-		X:          rnd.Float64() * 320,
-		Y:          rnd.Float64() * 240,
-		Frame:      rnd.Intn(4),
-		SpriteName: skins[rnd.Intn(len(skins))],
+		ID:             id,
+		Action:         ActionIdle,
+		LastActionTime: time.Now(),
+		X:              rnd.Float64() * 320,
+		Y:              rnd.Float64() * 240,
+		Frame:          rnd.Intn(4),
+		SpriteName:     skins[rnd.Intn(len(skins))],
 	}
 
 	w.Units[id] = unit
