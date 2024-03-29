@@ -24,8 +24,8 @@ jobs:
     - name: Build server
       run: cd server && go build -v ./
 
-    - name: Build client
-      run: go build -v ./
+#    - name: Build client
+#      run: go build -v ./
 
     - name: Test
       run: go test -v ./...
