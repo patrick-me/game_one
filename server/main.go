@@ -60,6 +60,12 @@ func clearWorld(done chan bool, ticker *time.Ticker, world *game.World) {
 func wsHandler(hub *Hub, world *game.World) gin.HandlerFunc {
 	return func(hub *Hub, world *game.World) gin.HandlerFunc {
 		return func(c *gin.Context) {
+			auth := c.Request.Header.Get("Authorization")
+
+			if auth != os.Getenv("AUTH_TOKEN") {
+				logger.Info("Request without authorization", zap.String("auth", auth))
+				return
+			}
 			ServeWs(hub, world, c.Writer, c.Request)
 		}
 	}(hub, world)

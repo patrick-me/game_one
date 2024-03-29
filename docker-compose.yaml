@@ -9,7 +9,7 @@ services:
     restart: always
     environment:
       SERVER_PORT: "3000"
-      VERSION: "1.0.0"
+      AUTH_TOKEN: SUPERSECRETTOKEN
     ports:
       - "3000:3000"
 
