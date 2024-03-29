@@ -4,8 +4,11 @@ import (
 	"github.com/gorilla/websocket"
 	e "github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/joho/godotenv"
 	"github.com/patrick-me/game_one/game"
 	"go.uber.org/zap"
+	"net/http"
+	"os"
 	"sort"
 	"strconv"
 )
@@ -35,6 +38,10 @@ func init() {
 
 	logger, _ = zap.NewProduction()
 	defer logger.Sync()
+
+	if err := godotenv.Load(); err != nil {
+		logger.Info("No .env file found")
+	}
 }
 
 type Game struct{}
@@ -48,7 +55,10 @@ func main() {
 }
 
 func connectToServer() *websocket.Conn {
-	c, _, _ := websocket.DefaultDialer.Dial("ws://localhost:3000/ws", nil)
+	headers := &http.Header{}
+	headers.Add("Authorization", os.Getenv("AUTH_TOKEN"))
+	conn, _, _ := websocket.DefaultDialer.Dial(os.Getenv("CONNECTION_URL"), *headers)
+
 	go func(c *websocket.Conn) {
 		defer c.Close()
 
@@ -57,8 +67,8 @@ func connectToServer() *websocket.Conn {
 			c.ReadJSON(&e)
 			world.HandleEvent(&e)
 		}
-	}(c)
-	return c
+	}(conn)
+	return conn
 }
 
 func (g *Game) Update() error {
@@ -83,7 +93,7 @@ func (g *Game) Draw(screen *e.Image) {
 	})
 
 	for _, unit := range unitList {
-		spriteIndex := (frame/10 + unit.Frame) % 4
+		spriteIndex := (frame/3 + unit.Frame) % 4
 		op := &e.DrawImageOptions{}
 
 		if unit.HorizontalDirection == game.DirectionLeft {
