@@ -34,10 +34,10 @@ func main() {
 	ws := gin.New()
 	ws.GET("/ws", wsHandler(hub, world))
 
-	ticker := time.NewTicker(time.Minute * 1)
+	ticker := time.NewTicker(time.Hour * 1)
 	done := make(chan bool)
 
-	go clearWorld(done, ticker, world)
+	go worldInfo(done, ticker, world)
 
 	logger.Info("Listening on port: ", zap.String("port", os.Getenv("SERVER_PORT")))
 	ws.Run(":" + os.Getenv("SERVER_PORT"))
@@ -46,7 +46,7 @@ func main() {
 	done <- true
 }
 
-func clearWorld(done chan bool, ticker *time.Ticker, world *game.World) {
+func worldInfo(done chan bool, ticker *time.Ticker, world *game.World) {
 	for {
 		select {
 		case <-done:
