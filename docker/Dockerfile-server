@@ -3,6 +3,8 @@ FROM golang:1.22-alpine
 WORKDIR /game-server
 COPY server/ ./
 COPY game/ ./game/
+COPY world/ ./world/
+COPY proto/ ./proto/
 COPY go.mod ./
 
 RUN go mod download
