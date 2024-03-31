@@ -57,7 +57,13 @@ func init() {
 func connectToServer() *websocket.Conn {
 	header := http.Header{}
 	header.Set("Authorization", os.Getenv("AUTH_TOKEN"))
-	conn, _, err := websocket.DefaultDialer.Dial(os.Getenv("CONNECTION_URL"), header)
+	dialer := websocket.Dialer{
+		Proxy:             http.ProxyFromEnvironment,
+		HandshakeTimeout:  45 * time.Second,
+		EnableCompression: true,
+	}
+
+	conn, _, err := dialer.Dial(os.Getenv("CONNECTION_URL"), header)
 
 	if err != nil {
 		logger.Info("can't connect to server", zap.Error(err))
@@ -173,15 +179,6 @@ func (g *Game) Draw(screen *e.Image) {
 		}
 
 		op.GeoM.Translate(unit.X, unit.Y)
-		second := time.Now().Second()
-
-		if second >= 0 && second <= 2 {
-			logger.Info("Position of unit: ",
-				zap.String("unit", unit.ID),
-				zap.Float64("X", unit.X),
-				zap.Float64("Y", unit.Y),
-			)
-		}
 
 		var a string
 		switch unit.Action {
