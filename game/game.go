@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	e "github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -87,6 +88,7 @@ func connectToServer() *websocket.Conn {
 }
 
 func NewGame() (*Game, error) {
+	go world.Evolve()
 
 	return &Game{
 		ScreenWidth:   320,
@@ -170,10 +172,10 @@ func (g *Game) Draw(screen *e.Image) {
 	})
 
 	for _, unit := range unitList {
-		spriteIndex := (int(g.Frame)/8 + int(unit.Frame)) % 4
+		spriteIndex := (int(g.Frame)/7 + int(unit.Frame)) % 4
 		op := &e.DrawImageOptions{}
 
-		if unit.HorizontalDirection == events.Direction_LEFT {
+		if unit.Direction == events.Direction_LEFT {
 			op.GeoM.Scale(-1, 1)
 			op.GeoM.Translate(16, 0)
 		}
@@ -200,5 +202,6 @@ func (g *Game) Draw(screen *e.Image) {
 		}
 
 		screen.DrawImage(img, op)
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f, FPS: %0.2f", e.ActualTPS(), e.ActualFPS()))
 	}
 }

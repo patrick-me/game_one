@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/patrick-me/game_one/proto"
 	events "github.com/patrick-me/game_one/proto"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -31,20 +32,7 @@ func (w *World) HandleEvent(e *events.Event) {
 		event := e.GetMove()
 		unit := w.Units[event.UnitID]
 		unit.Action = events.Action_RUN
-
-		switch event.Direction {
-		case events.Direction_UP:
-			unit.Y--
-		case events.Direction_DOWN:
-			unit.Y++
-		case events.Direction_LEFT:
-			unit.X--
-			unit.HorizontalDirection = event.Direction
-		case events.Direction_RIGHT:
-			unit.X++
-			unit.HorizontalDirection = event.Direction
-
-		}
+		unit.Direction = event.Direction
 
 	case events.Event_IDLE:
 		event := e.GetIdle()
@@ -73,9 +61,36 @@ func (w *World) AddPlayer() *events.Unit {
 		Y:          rnd.Float64() * 320,
 		Frame:      int32(rnd.Intn(4)),
 		SpriteName: skins[rnd.Intn(len(skins))],
+		Speed:      float64(rnd.Intn(4) + 1),
 	}
 
 	w.Units[id] = unit
 	return unit
 
+}
+
+func (w *World) Evolve() {
+	ticker := time.NewTicker(time.Second / 60)
+
+	for {
+		select {
+		case <-ticker.C:
+			for _, unit := range w.Units {
+				if unit.Action == events.Action_RUN {
+					switch unit.Direction {
+					case events.Direction_LEFT:
+						unit.X -= unit.Speed
+					case events.Direction_RIGHT:
+						unit.X += unit.Speed
+					case events.Direction_UP:
+						unit.Y -= unit.Speed
+					case events.Direction_DOWN:
+						unit.Y += unit.Speed
+					default:
+						log.Println("UNKNOWN DIRECTION: ", unit.Direction)
+					}
+				}
+			}
+		}
+	}
 }

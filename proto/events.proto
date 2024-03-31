@@ -66,5 +66,6 @@ message Unit {
   string spriteName = 4;
   Action action = 5;
   int32 frame = 6;
-  Direction horizontalDirection = 7;
+  Direction direction = 7;
+  double speed = 8;
 }
