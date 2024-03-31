@@ -1,12 +1,70 @@
-syntax="proto3";
+syntax = "proto3";
 
 option go_package = "github.com/patrick-me/proto/events";
 
 package events;
 
 enum Direction {
-  left = 0;
-  right = 1;
-  up = 2;
-  down = 3;
+  LEFT = 0;
+  RIGHT = 1;
+  UP = 2;
+  DOWN = 3;
+}
+
+message Event {
+
+  Type type = 1;
+  oneof data {
+    EventConnect connect = 2;
+    EventDisconnect disconnect = 3;
+    EventInit init = 4;
+    EventMove move = 5;
+    EventIdle idle = 6;
+  }
+
+  enum Type {
+    CONNECT = 0;
+    DISCONNECT = 1;
+    INIT = 2;
+    MOVE = 3;
+    IDLE = 4;
+  }
+}
+
+message EventConnect {
+  Unit unit = 1;
+}
+
+message EventDisconnect {
+  string unitID = 1;
+}
+
+message EventInit  {
+  string playerID = 1;
+  map<string, Unit>   units = 2;
+}
+
+message EventMove {
+  string unitID = 1;
+  Direction direction = 2;
+}
+
+message EventIdle {
+  string unitID = 1;
+}
+
+
+enum Action {
+  RUN = 0;
+  IDLE = 1;
+}
+
+message Unit {
+  string ID = 1;
+  double x = 2;
+  double y = 3;
+  string spriteName = 4;
+  Action action = 5;
+  int32 frame = 6;
+  Direction horizontalDirection = 7;
 }

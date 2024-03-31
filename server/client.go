@@ -5,10 +5,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"github.com/patrick-me/game_one/game"
+	events "github.com/patrick-me/game_one/proto"
+	w "github.com/patrick-me/game_one/world"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"net/http"
 	"time"
@@ -56,7 +56,7 @@ type Client struct {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump(world *game.World, unitID string) {
+func (c *Client) readPump(world *w.World, unitID string) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -73,11 +73,11 @@ func (c *Client) readPump(world *game.World, unitID string) {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+
 		c.hub.broadcast <- message
 
-		var e game.Event
-		err = json.Unmarshal(message, &e)
+		var e events.Event
+		err = proto.Unmarshal(message, &e)
 		if err != nil {
 			logger.Error("can't unmarshal event",
 				zap.String("message", string(message)),
@@ -92,7 +92,7 @@ func (c *Client) readPump(world *game.World, unitID string) {
 // A goroutine running writePump is started for each connection. The
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *Client) writePump(world *game.World, unitID string) {
+func (c *Client) writePump(world *w.World, unitID string) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -109,7 +109,7 @@ func (c *Client) writePump(world *game.World, unitID string) {
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
 				return
 			}
@@ -118,7 +118,6 @@ func (c *Client) writePump(world *game.World, unitID string) {
 			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
 				w.Write(<-c.send)
 			}
 
@@ -135,7 +134,7 @@ func (c *Client) writePump(world *game.World, unitID string) {
 }
 
 // serveWs handles websocket requests from the peer.
-func ServeWs(hub *Hub, world *game.World, w http.ResponseWriter, r *http.Request) {
+func ServeWs(hub *Hub, world *w.World, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error("can't upgrade connection", zap.Error(err))
@@ -153,49 +152,57 @@ func ServeWs(hub *Hub, world *game.World, w http.ResponseWriter, r *http.Request
 	go client.readPump(world, player.ID)
 }
 
-func sendAllNewUnitConnected(hub *Hub, world *game.World, player *game.Unit) {
-	event := game.Event{
-		Type: game.EventTypeConnect,
-		Data: game.EventConnect{
-			Unit: *world.Units[player.ID],
+func sendAllNewUnitConnected(hub *Hub, world *w.World, player *events.Unit) {
+	event := &events.Event{
+		Type: events.Event_CONNECT,
+		Data: &events.Event_Connect{
+			Connect: &events.EventConnect{
+				Unit: world.Units[player.ID],
+			},
 		},
 	}
 
-	msg, _ := json.Marshal(event)
+	msg, _ := proto.Marshal(event)
 
 	hub.broadcast <- msg
 }
 
-func sendToNewPlayerWorldUnits(world *game.World, conn *websocket.Conn) *game.Unit {
+func sendToNewPlayerWorldUnits(world *w.World, conn *websocket.Conn) *events.Unit {
 	player := world.AddPlayer()
-	event := game.Event{
-		Type: game.EventTypeInit,
-		Data: game.EventInit{
-			PlayerID: player.ID,
-			Units:    world.Units,
+
+	event := &events.Event{
+		Type: events.Event_INIT,
+		Data: &events.Event_Init{
+			Init: &events.EventInit{
+				PlayerID: player.ID,
+				Units:    world.Units,
+			},
 		},
 	}
 	logger.Info("New player added",
 		zap.String("player", player.ID),
 		zap.Int("units", len(world.Units)))
 
-	conn.WriteJSON(event)
+	msg, _ := proto.Marshal(event)
+	conn.WriteMessage(websocket.BinaryMessage, msg)
 	return player
 }
 
-func removeDisconnectedUnit(hub *Hub, world *game.World, unitID string) {
+func removeDisconnectedUnit(hub *Hub, world *w.World, unitID string) {
 
 	logger.Info("removing disconnected unit",
 		zap.String("unitId", unitID))
 
-	event := game.Event{
-		Type: game.EventTypeUnitDisconnected,
-		Data: game.EventUnitDisconnected{
-			UnitID: unitID,
+	event := &events.Event{
+		Type: events.Event_DISCONNECT,
+		Data: &events.Event_Disconnect{
+			Disconnect: &events.EventDisconnect{
+				UnitID: unitID,
+			},
 		},
 	}
 
-	msg, _ := json.Marshal(event)
+	msg, _ := proto.Marshal(event)
 	hub.broadcast <- msg
 	delete(world.Units, unitID)
 }

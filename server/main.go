@@ -3,7 +3,8 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/patrick-me/game_one/game"
+	events "github.com/patrick-me/game_one/proto"
+	w "github.com/patrick-me/game_one/world"
 	"go.uber.org/zap"
 	"os"
 	"time"
@@ -23,9 +24,9 @@ func init() {
 func main() {
 	defer logger.Sync()
 
-	world := &game.World{
+	world := &w.World{
 		IsServer: true,
-		Units:    game.Units{},
+		Units:    make(map[string]*events.Unit),
 	}
 
 	hub := NewHub()
@@ -46,7 +47,7 @@ func main() {
 	done <- true
 }
 
-func worldInfo(done chan bool, ticker *time.Ticker, world *game.World) {
+func worldInfo(done chan bool, ticker *time.Ticker, world *w.World) {
 	for {
 		select {
 		case <-done:
@@ -57,8 +58,8 @@ func worldInfo(done chan bool, ticker *time.Ticker, world *game.World) {
 	}
 }
 
-func wsHandler(hub *Hub, world *game.World) gin.HandlerFunc {
-	return func(hub *Hub, world *game.World) gin.HandlerFunc {
+func wsHandler(hub *Hub, world *w.World) gin.HandlerFunc {
+	return func(hub *Hub, world *w.World) gin.HandlerFunc {
 		return func(c *gin.Context) {
 			auth := c.Request.Header.Get("Authorization")
 
